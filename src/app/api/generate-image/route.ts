@@ -63,22 +63,29 @@ export async function POST(request: Request) {
 
     console.log("Image generated successfully, URL:", imageUrl?.substring(0, 50) + "...");
     return NextResponse.json({ url: imageUrl });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in API route:", error);
     
     let errorMessage = "Failed to generate image";
     let statusCode = 500;
     
-    if (error.message.includes("API key")) {
-      errorMessage = "Invalid or missing API key";
-      statusCode = 401;
-    } else if (error.message.includes("content policy violation")) {
-      errorMessage = "Content policy violation detected in prompt";
-      statusCode = 400;
+    if (error instanceof Error) {
+      if (error.message.includes("API key")) {
+        errorMessage = "Invalid or missing API key";
+        statusCode = 401;
+      } else if (error.message.includes("content policy violation")) {
+        errorMessage = "Content policy violation detected in prompt";
+        statusCode = 400;
+      }
+      
+      return NextResponse.json(
+        { error: errorMessage, details: error.message },
+        { status: statusCode }
+      );
     }
     
     return NextResponse.json(
-      { error: errorMessage, details: error.message },
+      { error: errorMessage },
       { status: statusCode }
     );
   }

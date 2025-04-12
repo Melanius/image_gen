@@ -257,7 +257,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-lg font-medium text-green-800">이미지 생성 대기 중</h3>
                 <p className="text-green-600 text-sm max-w-xs">
-                  프롬프트를 입력하고 스타일과 설정을 조정한 후 '이미지 생성하기' 버튼을 클릭하세요
+                  프롬프트를 입력하고 스타일과 설정을 조정한 후 &apos;이미지 생성하기&apos; 버튼을 클릭하세요
                 </p>
               </div>
             )}

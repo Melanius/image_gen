@@ -32,12 +32,13 @@ export async function generateImage(
     }
 
     return response.data[0].url;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating image:', error);
-    if (error.response) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const apiError = error as { response: { status: number; data: unknown } };
       console.error('OpenAI API Error:', {
-        status: error.response.status,
-        data: error.response.data
+        status: apiError.response.status,
+        data: apiError.response.data
       });
     }
     throw error;
