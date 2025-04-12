@@ -3,6 +3,17 @@ import { generateImage, ImageStyle, ImageQuality } from "@/lib/openai";
 
 export async function POST(request: Request) {
   try {
+    // API 키 유효성 확인
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { 
+          error: "API 키가 설정되지 않았습니다", 
+          details: "OPENAI_API_KEY가 환경 변수에 설정되지 않았습니다. 배포 환경(Vercel)에서 환경 변수를 설정해주세요." 
+        },
+        { status: 500 }
+      );
+    }
+    
     const body = await request.json();
     const { prompt, size, style, quality } = body;
 
@@ -68,18 +79,21 @@ export async function POST(request: Request) {
     
     let errorMessage = "Failed to generate image";
     let statusCode = 500;
+    let details = "";
     
     if (error instanceof Error) {
+      details = error.message;
+      
       if (error.message.includes("API key")) {
-        errorMessage = "Invalid or missing API key";
+        errorMessage = "OpenAI API 키가 올바르지 않거나 누락되었습니다";
         statusCode = 401;
       } else if (error.message.includes("content policy violation")) {
-        errorMessage = "Content policy violation detected in prompt";
+        errorMessage = "프롬프트에 정책 위반 내용이 포함되어 있습니다";
         statusCode = 400;
       }
       
       return NextResponse.json(
-        { error: errorMessage, details: error.message },
+        { error: errorMessage, details },
         { status: statusCode }
       );
     }

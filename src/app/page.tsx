@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,12 +33,33 @@ export default function Home() {
   const [stylePreset, setStylePreset] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   // 프롬프트와 스타일을 조합하는 함수
   const getCombinedPrompt = () => {
     if (!stylePreset || stylePreset === "none") return prompt;
     return `${prompt}. ${stylePresets[stylePreset as keyof typeof stylePresets]}`;
   };
+
+  // API 상태 체크
+  useEffect(() => {
+    const checkApiStatus = async () => {
+      try {
+        const response = await fetch("/api/generate-image", {
+          method: "HEAD",
+        }).catch(() => ({ ok: false }));
+        
+        if (response && !response.ok) {
+          setApiKeyMissing(true);
+        }
+      } catch (error) {
+        // 요청 자체가 실패한 경우 무시
+        console.log("API status check failed:", error);
+      }
+    };
+    
+    checkApiStatus();
+  }, []);
 
   const handleGenerateImage = async () => {
     if (!prompt.trim()) {
@@ -76,6 +97,11 @@ export default function Home() {
         console.error("API error:", data);
         setError(errorMessage);
         toast.error(errorMessage);
+        
+        if (data.error && (data.error.includes("API 키") || data.error.includes("API key"))) {
+          setApiKeyMissing(true);
+        }
+        
         return;
       }
 
@@ -105,6 +131,16 @@ export default function Home() {
           </p>
         </header>
 
+        {apiKeyMissing && (
+          <div className="w-full max-w-4xl bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-8">
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">API 키 설정 필요</h3>
+            <p className="text-yellow-700 text-sm">
+              OpenAI API 키가 설정되지 않았습니다. 애플리케이션을 사용하기 위해서는 환경 변수에 OPENAI_API_KEY를 설정해야 합니다.
+              Vercel에 배포하는 경우, 프로젝트 설정의 Environment Variables 섹션에서 API 키를 추가하세요.
+            </p>
+          </div>
+        )}
+
         <main className="w-full max-w-4xl flex flex-col lg:flex-row gap-8 items-start">
           <div className="w-full lg:w-1/2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border border-green-100">
             <div className="flex flex-col gap-5">
@@ -117,7 +153,7 @@ export default function Home() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="자세한 프롬프트를 입력하세요..."
-                  disabled={loading}
+                  disabled={loading || apiKeyMissing}
                   className="border-green-200 focus-visible:ring-green-500 h-[42px]"
                 />
               </div>
@@ -130,7 +166,7 @@ export default function Home() {
                   <Select
                     value={stylePreset}
                     onValueChange={(value) => setStylePreset(value)}
-                    disabled={loading}
+                    disabled={loading || apiKeyMissing}
                   >
                     <SelectTrigger id="stylePreset" className="border-green-200 focus:ring-green-500 h-[42px]">
                       <SelectValue placeholder="스타일 프리셋 선택 (선택사항)" />
@@ -159,7 +195,7 @@ export default function Home() {
                   <Select
                     value={size}
                     onValueChange={(value) => setSize(value as "1024x1024" | "1792x1024" | "1024x1792")}
-                    disabled={loading}
+                    disabled={loading || apiKeyMissing}
                   >
                     <SelectTrigger id="size" className="border-green-200 focus:ring-green-500 h-[42px]">
                       <SelectValue placeholder="이미지 크기 선택" />
@@ -181,7 +217,7 @@ export default function Home() {
                   <Select
                     value={style}
                     onValueChange={(value) => setStyle(value as ImageStyle)}
-                    disabled={loading}
+                    disabled={loading || apiKeyMissing}
                   >
                     <SelectTrigger id="style" className="border-green-200 focus:ring-green-500 h-[42px]">
                       <SelectValue placeholder="스타일 선택" />
@@ -200,7 +236,7 @@ export default function Home() {
                   <Select
                     value={quality}
                     onValueChange={(value) => setQuality(value as ImageQuality)}
-                    disabled={loading}
+                    disabled={loading || apiKeyMissing}
                   >
                     <SelectTrigger id="quality" className="border-green-200 focus:ring-green-500 h-[42px]">
                       <SelectValue placeholder="품질 선택" />
@@ -222,10 +258,10 @@ export default function Home() {
               
               <Button 
                 onClick={handleGenerateImage} 
-                disabled={loading || !prompt.trim()}
+                disabled={loading || !prompt.trim() || apiKeyMissing}
                 className="mt-2 bg-green-600 hover:bg-green-700 text-white h-[42px] w-full"
               >
-                {loading ? "생성 중..." : "이미지 생성하기"}
+                {loading ? "생성 중..." : apiKeyMissing ? "API 키 설정 필요" : "이미지 생성하기"}
               </Button>
             </div>
           </div>
@@ -248,7 +284,7 @@ export default function Home() {
               </div>
             )}
 
-            {!imageUrl && !loading && !error && (
+            {!imageUrl && !loading && !error && !apiKeyMissing && (
               <div className="flex flex-col items-center justify-center gap-4 p-8 min-h-[400px] text-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
@@ -258,6 +294,20 @@ export default function Home() {
                 <h3 className="text-lg font-medium text-green-800">이미지 생성 대기 중</h3>
                 <p className="text-green-600 text-sm max-w-xs">
                   프롬프트를 입력하고 스타일과 설정을 조정한 후 &apos;이미지 생성하기&apos; 버튼을 클릭하세요
+                </p>
+              </div>
+            )}
+
+            {!imageUrl && !loading && !error && apiKeyMissing && (
+              <div className="flex flex-col items-center justify-center gap-4 p-8 min-h-[400px] text-center">
+                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-600">
+                    <path d="M12 9v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-yellow-800">API 키 설정이 필요합니다</h3>
+                <p className="text-yellow-700 text-sm max-w-xs">
+                  Vercel 대시보드에서 Environment Variables 설정에 OPENAI_API_KEY를 추가해주세요.
                 </p>
               </div>
             )}

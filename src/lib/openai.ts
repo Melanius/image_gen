@@ -1,7 +1,13 @@
 import OpenAI from 'openai';
 
+// API 키 유효성 확인
+const apiKey = process.env.OPENAI_API_KEY;
+if (!apiKey) {
+  console.warn('Warning: OPENAI_API_KEY is not set in environment variables.');
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: apiKey || 'dummy_key_for_build_process', // 빌드 프로세스를 위한 더미 키
 });
 
 export type ImageStyle = "natural" | "vivid";
@@ -14,6 +20,11 @@ export async function generateImage(
   quality: ImageQuality = "standard"
 ) {
   try {
+    // API 키가 없을 경우 친절한 오류 메시지 반환
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is not configured. Please add it to your environment variables.');
+    }
+    
     console.log(`Generating image with prompt: "${prompt}", size: ${size}, style: ${style}, quality: ${quality}`);
     
     const response = await openai.images.generate({
